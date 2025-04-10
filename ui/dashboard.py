@@ -423,6 +423,20 @@ def update_data():
         st.session_state.user_details = user_details
         st.session_state.active_alerts = user_details.get("alerts", [])
 
+def handle_user_selection():
+    """
+    Handle user selection change.
+    """
+    # Get the selected user ID from the session state
+    selected_user_id = st.session_state.selected_user
+    
+    # Fetch fresh user details for the selected user
+    user_details = fetch_user_details(selected_user_id)
+    
+    # Update session state with the new details
+    st.session_state.user_details = user_details
+    st.session_state.active_alerts = user_details.get("alerts", [])
+
 def resolve_alert(alert):
     """
     Resolve an alert (simulated).
@@ -438,15 +452,6 @@ def resolve_alert(alert):
         time_module.sleep(0.5)  # Simulate API call delay
         update_data()
 
-def handle_user_selection():
-    """
-    Handle user selection change.
-    """
-    # Get user details for selected user
-    user_details = fetch_user_details(st.session_state.selected_user)
-    st.session_state.user_details = user_details
-    st.session_state.active_alerts = user_details.get("alerts", [])
-
 # Define color scheme for status levels
 status_colors = {
     "normal": "green",
@@ -461,8 +466,15 @@ st.title("CareCompanion Dashboard")
 st.markdown("### Elderly Care Monitoring System")
 
 # Refresh button
-if st.button("Refresh Data"):
+if st.button("Refresh Data", key="refresh_button"):
     update_data()
+    
+    # If there's a currently selected user, update their data too
+    if st.session_state.selected_user:
+        user_details = fetch_user_details(st.session_state.selected_user)
+        st.session_state.user_details = user_details
+        st.session_state.active_alerts = user_details.get("alerts", [])
+    
     st.success("Data refreshed successfully!")
 
 # Create two columns for the layout
@@ -498,7 +510,7 @@ with col1:
     # Display status distribution
     st.subheader("User Status Distribution")
     status_counts = system_status["user_status_counts"]
-    
+
     # Prepare data for chart
     labels = list(status_counts.keys())
     sizes = list(status_counts.values())
@@ -515,9 +527,35 @@ with col1:
 
     # Only create pie chart if we have valid data
     if filtered_sizes:
-        fig, ax = plt.subplots(figsize=(3, 3))
-        ax.pie(filtered_sizes, labels=filtered_labels, colors=filtered_colors, autopct='%1.1f%%', startangle=90)
+        # Create a larger figure with more space
+        fig, ax = plt.subplots(figsize=(6, 4))
+        
+        # Add slight explode effect to all slices
+        explode = [0.05] * len(filtered_sizes)
+        
+        # Draw pie chart with no percentages
+        wedges, _ = ax.pie(
+            filtered_sizes, 
+            labels=None,  # No direct labels
+            colors=filtered_colors, 
+            autopct=None,  # Remove percentage labels
+            startangle=90,
+            explode=explode
+        )
+        
+        # Add a legend to the right side
+        ax.legend(
+            wedges,
+            filtered_labels,
+            title="Status Categories",
+            loc="center left",
+            bbox_to_anchor=(1, 0, 0.5, 1)
+        )
+        
         ax.axis('equal')
+        plt.tight_layout()
+        
+        # Display in Streamlit
         st.pyplot(fig)
     else:
         st.warning("No valid status data available")
@@ -527,39 +565,84 @@ with col1:
     
     # User list
     st.subheader("User List")
-    
-    user_list = fetch_user_list()
-    
+
     # Create selectbox for user selection
+    user_list = fetch_user_list()
+
+    # Create a unique key for the selectbox to prevent state issues
+    selectbox_key = "user_selector_" + str(hash(str(user_list)))
+
+    # Count users by status for the summary
+    status_counts = {}
+    for user in user_list:
+        status = user["status"]
+        status_counts[status] = status_counts.get(status, 0) + 1
+
+    # Format options for dropdown
     user_options = [f"{user['name']} ({user['status']})" for user in user_list]
     user_dict = {f"{user['name']} ({user['status']})": user["user_id"] for user in user_list}
-    
+
+    # Create a callback function specifically for the selectbox
+    def on_user_select():
+        option = st.session_state[selectbox_key]
+        if option and option in user_dict:
+            st.session_state.selected_user = user_dict[option]
+
+    # Find the current selection, if any
+    current_selection = None
+    if hasattr(st.session_state, 'selected_user') and st.session_state.selected_user:
+        # Find the label for the current selection
+        for label, user_id in user_dict.items():
+            if user_id == st.session_state.selected_user:
+                current_selection = label
+                break
+
+    # Create the selectbox
     selected_option = st.selectbox(
         "Select a user to view details:",
         options=user_options,
-        index=0 if user_options else None,
-        key="user_selector",
-        on_change=handle_user_selection
+        index=user_options.index(current_selection) if current_selection in user_options else 0,
+        key=selectbox_key,
+        on_change=on_user_select
     )
-    
-    if selected_option:
+
+    # If no selection has been made yet, initialize with the first user
+    if not hasattr(st.session_state, 'selected_user') or not st.session_state.selected_user:
         st.session_state.selected_user = user_dict[selected_option]
-    
-    # Create styled user list
-    for user in user_list:
-        status_color = status_colors.get(user["status"], "gray")
-        status_emoji = "🟢" if user["status"] == "normal" else "🟠" if user["status"] == "attention" else "🔴" if user["status"] == "alert" else "⚠️" if user["status"] == "emergency" else "⚪"
+        # We'll handle the user details in the main content area
+
+    # After the selectbox, add this code to call handle_user_selection
+    if st.session_state.selected_user:
+        # We only need to call this if the user details aren't already loaded
+        if "user_details" not in st.session_state or st.session_state.user_details.get("user_id") != st.session_state.selected_user:
+            handle_user_selection()
+
+    # Display the selected user's details
+    if st.session_state.selected_user:
+        selected_user_id = st.session_state.selected_user
+        selected_user = next((user for user in user_list if user["user_id"] == selected_user_id), None)
         
-        st.markdown(
-            f"""
-            <div style="padding: 10px; margin-bottom: 10px; border-radius: 5px; border-left: 5px solid {status_color}; background-color: #f0f2f6;">
-                <div style="font-weight: bold;">{status_emoji} {user["name"]}</div>
-                <div style="font-size: 0.8em;">Location: {user["location"]}</div>
-                <div style="font-size: 0.8em;">Activity: {user["activity"]}</div>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        if selected_user:
+            status_color = status_colors.get(selected_user["status"], "gray")
+            status_emoji = "🟢" if selected_user["status"] == "normal" else "🟠" if selected_user["status"] == "attention" else "🔴" if selected_user["status"] == "alert" else "⚠️" if selected_user["status"] == "emergency" else "⚪"
+            
+            st.markdown(
+                f"""
+                <div style="padding: 10px; margin-bottom: 10px; border-radius: 5px; border-left: 5px solid {status_color}; background-color: #f0f2f6;">
+                    <div style="font-weight: bold;">{status_emoji} {selected_user["name"]}</div>
+                    <div style="font-size: 0.8em;">Location: {selected_user["location"]}</div>
+                    <div style="font-size: 0.8em;">Activity: {selected_user["activity"]}</div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+    # Add a small summary of user statistics
+    st.markdown("#### User Statistics")
+    st.write(f"Total Users: {len(user_list)}")
+    for status, count in status_counts.items():
+        status_color = status_colors.get(status, "gray")
+        st.markdown(f"<span style='color: {status_color};'>{status.title()}</span>: {count}", unsafe_allow_html=True)
 
 # Main content area
 with col2:
@@ -648,7 +731,6 @@ with col2:
                         <div style="padding: 10px; margin-bottom: 10px; border-radius: 5px; background-color: rgba({', '.join(['255, 0, 0, 0.1'] if level == 'urgent' else ['255, 165, 0, 0.1'] if level == 'warning' else ['0, 0, 255, 0.1'])});">
                             <div style="font-weight: bold; color: {alert_color};">{level.upper()}: {message}</div>
                             <div style="font-size: 0.8em;">Source: {source}</div>
-                            <button style="background-color: #f0f2f6; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; margin-top: 5px;" onclick="alert('Resolve button clicked')">Resolve</button>
                         </div>
                         """,
                         unsafe_allow_html=True
@@ -766,36 +848,19 @@ with col2:
                     status_color = status_colors.get(status, "gray")
                     st.markdown(f"**Overall Safety**: <span style='color: {status_color};'>{status.title()}</span>", unsafe_allow_html=True)
                 
-                # Mock location visualization (simple placeholder)
-                st.subheader("Home Location Map")
+                # Safety metrics
+                st.subheader("Safety Information")
                 
-                # Create a simple home layout visualization
-                fig, ax = plt.subplots(figsize=(8, 6))
+                # Add some basic safety metrics instead of the home layout
+                metrics_col1, metrics_col2 = st.columns(2)
                 
-                # Define rooms as rectangles
-                rooms = {
-                    "Living Room": [0.1, 0.1, 0.5, 0.5],
-                    "Kitchen": [0.6, 0.1, 0.3, 0.3],
-                    "Bedroom": [0.1, 0.6, 0.4, 0.3],
-                    "Bathroom": [0.6, 0.4, 0.3, 0.2]
-                }
+                with metrics_col1:
+                    st.metric("Time in Current Location", f"{random.randint(10, 120)} minutes")
+                    st.metric("Daily Movement Score", f"{random.randint(60, 95)}%")
                 
-                # Plot rooms
-                for room_name, dims in rooms.items():
-                    color = "lightblue"
-                    if room_name == location:
-                        color = "lightgreen"  # Highlight current location
-                    
-                    rect = plt.Rectangle((dims[0], dims[1]), dims[2], dims[3], facecolor=color, edgecolor='black', alpha=0.7)
-                    ax.add_patch(rect)
-                    ax.text(dims[0] + dims[2]/2, dims[1] + dims[3]/2, room_name, ha='center', va='center')
-                
-                ax.set_xlim(0, 1)
-                ax.set_ylim(0, 1)
-                ax.set_xticks([])
-                ax.set_yticks([])
-                ax.set_title('Home Layout')
-                st.pyplot(fig)
+                with metrics_col2:
+                    st.metric("Last Room Change", f"{random.randint(5, 60)} minutes ago")
+                    st.metric("Activity Level", f"{random.choice(['Low', 'Moderate', 'Normal', 'High'])}")
                 
                 # Safety alerts
                 st.subheader("Safety Alerts")
