@@ -1,0 +1,106 @@
+# CareCompanion Configuration File
+
+# System settings
+system:
+  name: CareCompanion
+  version: 1.0.0
+  log_level: INFO
+  data_path: ./data/
+
+# Database settings (simulated)
+database:
+  type: sqlite
+  path: ./data/carecompanion.db
+
+# LLM settings
+llm:
+  provider: ollama
+  models:
+    health_monitor: TinyLlama-1.1B
+    safety_guardian: Gemma-2B
+    daily_assistant: Phi-2
+    social_engagement: DistilBERT
+    coordination: Gemma-2B
+    emergency: TinyLlama-1.1B
+
+# Agent settings
+agents:
+  health_monitor:
+    update_interval: 300  # seconds
+    thresholds:
+      heart_rate:
+        min: 60
+        max: 100
+      blood_pressure_systolic:
+        min: 90
+        max: 140
+      blood_pressure_diastolic:
+        min: 60
+        max: 90
+      glucose:
+        min: 70
+        max: 140
+      oxygen:
+        min: 95
+        max: 100
+  
+  safety_guardian:
+    update_interval: 60  # seconds
+    room_settings:
+      bedroom:
+        expected_activities: ["Lying", "No Movement", "Sitting"]
+        inactivity_threshold: 480  # minutes
+        privacy_level: high
+      bathroom:
+        expected_activities: ["No Movement", "Sitting"]
+        inactivity_threshold: 60  # minutes
+        privacy_level: highest
+      living_room:
+        expected_activities: ["Sitting", "Walking", "No Movement"]
+        inactivity_threshold: 240  # minutes
+        privacy_level: medium
+      kitchen:
+        expected_activities: ["Walking", "Standing", "No Movement"]
+        inactivity_threshold: 120  # minutes
+        privacy_level: medium
+  
+  daily_assistant:
+    update_interval: 300  # seconds
+    reminder_types:
+      medication:
+        priority: high
+        max_delay: 60  # minutes
+      hydration:
+        priority: medium
+        max_delay: 120  # minutes
+      appointment:
+        priority: high
+        max_delay: 120  # minutes
+      exercise:
+        priority: medium
+        max_delay: 240  # minutes
+  
+  social_engagement:
+    update_interval: 3600  # seconds
+    isolation_threshold: 72  # hours
+    
+  coordination:
+    update_interval: 30  # seconds
+    
+  emergency_response:
+    response_time: 10  # seconds
+    escalation_levels:
+      1: "notify_app"
+      2: "notify_caregiver"
+      3: "notify_emergency_services"
+
+# UI settings
+ui:
+  refresh_rate: 60  # seconds
+  dashboard:
+    charts:
+      - health_trends
+      - safety_score
+      - reminder_adherence
+      - social_engagement
+    default_timespan: 7  # days
