@@ -12,7 +12,6 @@ from agents.base_agent import BaseAgent
 from agents.health_monitor import HealthMonitorAgent
 from agents.safety_guardian import SafetyGuardianAgent
 from agents.daily_assistant import DailyAssistantAgent
-from agents.social_engagement import SocialEngagementAgent
 from agents.emergency_response import EmergencyResponseAgent
 from utils.logger import setup_logger
 from utils.config import Config
@@ -37,7 +36,6 @@ class CoordinationAgent(BaseAgent):
         self.health_agent: Optional[HealthMonitorAgent] = None
         self.safety_agent: Optional[SafetyGuardianAgent] = None
         self.daily_agent: Optional[DailyAssistantAgent] = None
-        self.social_agent: Optional[SocialEngagementAgent] = None
         self.emergency_agent: Optional[EmergencyResponseAgent] = None
         
         # User context data
@@ -60,7 +58,6 @@ class CoordinationAgent(BaseAgent):
         health_agent: HealthMonitorAgent,
         safety_agent: SafetyGuardianAgent,
         daily_agent: DailyAssistantAgent,
-        social_agent: SocialEngagementAgent,
         emergency_agent: EmergencyResponseAgent
     ) -> None:
         """
@@ -70,13 +67,11 @@ class CoordinationAgent(BaseAgent):
             health_agent: Health Monitor Agent
             safety_agent: Safety Guardian Agent
             daily_agent: Daily Assistant Agent
-            social_agent: Social Engagement Agent
             emergency_agent: Emergency Response Agent
         """
         self.health_agent = health_agent
         self.safety_agent = safety_agent
         self.daily_agent = daily_agent
-        self.social_agent = social_agent
         self.emergency_agent = emergency_agent
         
         self.logger.info("All agent references set")
@@ -110,7 +105,6 @@ class CoordinationAgent(BaseAgent):
             "health_status": "unknown",
             "safety_status": "unknown",
             "reminder_status": "unknown",
-            "social_status": "unknown",
             "emergency_status": "none",
             "current_location": "unknown",
             "current_activity": "unknown",
@@ -215,20 +209,6 @@ class CoordinationAgent(BaseAgent):
             except Exception as e:
                 self.logger.error(f"Error updating reminder status for user {user_id}: {e}")
         
-        # Update social status
-        if self.social_agent:
-            try:
-                social_status = await self.social_agent.get_social_status(user_id)
-                if social_status.get("status") == "success":
-                    self.user_contexts[user_id]["social_status"] = social_status["analysis"].get("social_status", "unknown")
-                    
-                    # Add social alerts
-                    for alert in social_status.get("alerts", []):
-                        if alert not in self.user_contexts[user_id]["alerts"]:
-                            self.user_contexts[user_id]["alerts"].append(alert)
-            except Exception as e:
-                self.logger.error(f"Error updating social status for user {user_id}: {e}")
-        
         # Update emergency status
         if self.emergency_agent:
             try:
@@ -267,8 +247,7 @@ class CoordinationAgent(BaseAgent):
         statuses = [
             context.get("health_status", "unknown"),
             context.get("safety_status", "unknown"),
-            context.get("reminder_status", "unknown"),
-            context.get("social_status", "unknown")
+            context.get("reminder_status", "unknown")
         ]
         
         if "alert" in statuses:
@@ -313,9 +292,6 @@ class CoordinationAgent(BaseAgent):
             
             elif data_type == "reminder":
                 return await self._process_reminder_data(user_id, data)
-            
-            elif data_type == "social":
-                return await self._process_social_data(user_id, data)
             
             else:
                 return {
@@ -495,49 +471,6 @@ class CoordinationAgent(BaseAgent):
         
         return result
     
-    async def _process_social_data(self, user_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Process social data by forwarding to Social Engagement Agent.
-        
-        Args:
-            user_id: ID of the user
-            data: Social data dictionary
-            
-        Returns:
-            Processing results
-        """
-        if not self.social_agent:
-            return {
-                "status": "error",
-                "message": "Social Engagement Agent not initialized"
-            }
-        
-        # Forward to Social Engagement Agent
-        result = await self.social_agent.process_message({
-            "type": "social_data",
-            "data": {
-                "user_id": user_id,
-                **data.get("data", {})
-            }
-        })
-        
-        # Update user context
-        if result.get("status") == "success":
-            # Update social status
-            if "analysis" in result and "social_status" in result["analysis"]:
-                self.user_contexts[user_id]["social_status"] = result["analysis"]["social_status"]
-            
-            # Add alerts
-            for alert in result.get("alerts", []):
-                if alert not in self.user_contexts[user_id]["alerts"]:
-                    self.user_contexts[user_id]["alerts"].append(alert)
-            
-            # Update overall status
-            self.user_contexts[user_id]["overall_status"] = self._determine_overall_status(user_id)
-            self.user_contexts[user_id]["last_update"] = datetime.now().isoformat()
-        
-        return result
-    
     async def get_user_status(self, user_id: str) -> Dict[str, Any]:
         """
         Get comprehensive status information for a user.
@@ -565,7 +498,6 @@ class CoordinationAgent(BaseAgent):
         health_status = None
         safety_status = None
         reminder_status = None
-        social_status = None
         emergency_status = None
         
         if self.health_agent:
@@ -592,14 +524,6 @@ class CoordinationAgent(BaseAgent):
             except Exception as e:
                 self.logger.error(f"Error getting reminder status for user {user_id}: {e}")
         
-        if self.social_agent:
-            try:
-                response = await self.social_agent.get_social_status(user_id)
-                if response.get("status") == "success":
-                    social_status = response
-            except Exception as e:
-                self.logger.error(f"Error getting social status for user {user_id}: {e}")
-        
         if self.emergency_agent:
             try:
                 response = await self.emergency_agent.get_emergency_status(user_id)
@@ -614,8 +538,7 @@ class CoordinationAgent(BaseAgent):
             context, 
             health_status, 
             safety_status, 
-            reminder_status, 
-            social_status, 
+            reminder_status,
             emergency_status
         )
         
@@ -627,7 +550,6 @@ class CoordinationAgent(BaseAgent):
             "health": health_status,
             "safety": safety_status,
             "reminders": reminder_status,
-            "social": social_status,
             "emergency": emergency_status,
             "summary": status_summary
         }
@@ -639,7 +561,6 @@ class CoordinationAgent(BaseAgent):
         health_status: Optional[Dict[str, Any]],
         safety_status: Optional[Dict[str, Any]],
         reminder_status: Optional[Dict[str, Any]],
-        social_status: Optional[Dict[str, Any]],
         emergency_status: Optional[Dict[str, Any]]
     ) -> str:
         """
@@ -651,7 +572,6 @@ class CoordinationAgent(BaseAgent):
             health_status: Health status data
             safety_status: Safety status data
             reminder_status: Reminder status data
-            social_status: Social status data
             emergency_status: Emergency status data
             
         Returns:
@@ -661,7 +581,6 @@ class CoordinationAgent(BaseAgent):
         health_summary = health_status.get("summary", "No health data available") if health_status else "No health data available"
         safety_summary = safety_status.get("summary", "No safety data available") if safety_status else "No safety data available"
         reminder_summary = reminder_status.get("summary", "No reminder data available") if reminder_status else "No reminder data available"
-        social_summary = social_status.get("summary", "No social data available") if social_status else "No social data available"
         
         active_emergency = "None"
         if emergency_status and emergency_status.get("active_emergency"):
@@ -687,7 +606,6 @@ class CoordinationAgent(BaseAgent):
         - Health: {health_summary}
         - Safety: {safety_summary}
         - Reminders: {reminder_summary}
-        - Social: {social_summary}
         
         Recent alerts ({alert_count} total):
         {alert_text if alert_count > 0 else "No recent alerts"}
@@ -789,7 +707,6 @@ class CoordinationAgent(BaseAgent):
             "health_monitor": self.health_agent is not None,
             "safety_guardian": self.safety_agent is not None,
             "daily_assistant": self.daily_agent is not None,
-            "social_engagement": self.social_agent is not None,
             "emergency_response": self.emergency_agent is not None
         }
         
