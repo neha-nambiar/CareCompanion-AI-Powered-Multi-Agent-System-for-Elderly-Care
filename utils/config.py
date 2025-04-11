@@ -96,7 +96,7 @@ class Config:
         """
         model_name = self.get(f"llm.models.{agent_name}")
         if not model_name:
-            model_name = self.get("llm.models.default", "Gemma-2B")
+            model_name = self.get("llm.models.default", "mistral")
         
         return model_name
     
