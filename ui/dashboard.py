@@ -45,7 +45,6 @@ if "system_status" not in st.session_state:
             "health_monitor": True,
             "safety_guardian": True,
             "daily_assistant": True,
-            "social_engagement": True,
             "emergency_response": True
         },
         "started_at": datetime.now().isoformat(),
@@ -93,7 +92,6 @@ def fetch_system_status():
             "health_monitor": True,
             "safety_guardian": True,
             "daily_assistant": True,
-            "social_engagement": True,
             "emergency_response": True
         }
         
@@ -308,59 +306,18 @@ def fetch_user_details(user_id):
                     "timestamp": datetime.now().isoformat()
                 })
         
-        # Generate social status (simulated since we don't have social data)
-        social_status = {
-            "weekly_interactions": random.randint(3, 15),
-            "last_interaction": {
-                "type": random.choice(["video_call", "phone_call", "in_person_visit"]),
-                "contact": random.choice(["Family member", "Friend", "Caregiver"]),
-                "timestamp": (datetime.now() - timedelta(hours=random.randint(1, 72))).isoformat()
-            },
-            "suggestions": [
-                {
-                    "type": "video_call",
-                    "title": "Schedule a video call with family",
-                    "description": "Regular video calls help maintain social connections.",
-                    "priority": "medium"
-                },
-                {
-                    "type": "community_event",
-                    "title": "Attend local community event",
-                    "description": "Community events provide opportunities to meet new people.",
-                    "priority": "low"
-                }
-            ],
-            "alerts": [],
-            "status": "normal"
-        }
-        
-        # Generate alert if last interaction was more than 48 hours ago
-        last_interaction_time = datetime.fromisoformat(social_status["last_interaction"]["timestamp"])
-        hours_since = (datetime.now() - last_interaction_time).total_seconds() / 3600
-        
-        if hours_since > 72:
-            social_status["alerts"].append({
-                "level": "warning",
-                "type": "social_isolation",
-                "message": f"Limited social interaction: {int(hours_since)} hours since last contact",
-                "timestamp": datetime.now().isoformat()
-            })
-            social_status["status"] = "attention"
-        
         # Combine all alerts
         all_alerts = (
             health_status.get("alerts", []) + 
             safety_status.get("alerts", []) + 
-            reminder_status.get("alerts", []) + 
-            social_status.get("alerts", [])
+            reminder_status.get("alerts", [])
         )
         
         # Determine overall status
         statuses = [
             health_status.get("status", "unknown"),
             safety_status.get("status", "unknown"),
-            reminder_status.get("status", "unknown"),
-            social_status.get("status", "unknown")
+            reminder_status.get("status", "unknown")
         ]
         
         if "emergency" in statuses:
@@ -394,7 +351,6 @@ def fetch_user_details(user_id):
             "health": health_status,
             "safety": safety_status,
             "reminders": reminder_status,
-            "social": social_status,
             "overall_status": overall_status,
             "summary": summary,
             "alerts": all_alerts
@@ -676,15 +632,15 @@ with col2:
         # Summary
         st.markdown(f"**Summary**: {user_details.get('summary', 'No summary available')}")
         
-        # Create tabs for different categories
-        tabs = st.tabs(["Overview", "Health", "Safety", "Reminders", "Social", "Alerts"])
+        # Create tabs for different categories - removed "Social" tab
+        tabs = st.tabs(["Overview", "Health", "Safety", "Reminders", "Alerts"])
         
         # Overview tab
         with tabs[0]:
             st.subheader("Current Status")
             
-            # Create metrics row
-            col1, col2, col3, col4 = st.columns(4)
+            # Create metrics row - reduced to 3 columns
+            col1, col2, col3 = st.columns(3)
             
             with col1:
                 health_status = user_details.get("health", {}).get("status", "unknown")
@@ -700,11 +656,6 @@ with col2:
                 reminder_status = user_details.get("reminders", {}).get("status", "unknown")
                 reminder_color = status_colors.get(reminder_status, "gray")
                 st.markdown(f"Reminders: <span style='color: {reminder_color};'>{reminder_status.title()}</span>", unsafe_allow_html=True)
-            
-            with col4:
-                social_status = user_details.get("social", {}).get("status", "unknown")
-                social_color = status_colors.get(social_status, "gray")
-                st.markdown(f"Social: <span style='color: {social_color};'>{social_status.title()}</span>", unsafe_allow_html=True)
             
             # Current location and activity
             st.subheader("Current Activity")
@@ -986,109 +937,8 @@ with col2:
             else:
                 st.warning("No reminder data available")
         
-        # Social tab
-        with tabs[4]:
-            social_data = user_details.get("social", {})
-            
-            if social_data:
-                # Display social status
-                st.subheader("Social Engagement Status")
-                
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    # Weekly interactions
-                    weekly = social_data.get("weekly_interactions", 0)
-                    st.metric("Weekly Interactions", weekly)
-                
-                with col2:
-                    # Last interaction
-                    last_interaction = social_data.get("last_interaction", {})
-                    last_type = last_interaction.get("type", "unknown")
-                    last_contact = last_interaction.get("contact", "unknown")
-                    last_time = datetime.fromisoformat(last_interaction.get("timestamp", datetime.now().isoformat()))
-                    
-                    hours_ago = int((datetime.now() - last_time).total_seconds() / 3600)
-                    
-                    st.markdown(f"**Last Interaction**: {last_type.replace('_', ' ').title()} with {last_contact}")
-                    st.markdown(f"**Time Since**: {hours_ago} hours ago")
-                
-                # Social engagement visualization
-                st.subheader("Social Engagement (Last 30 Days)")
-                
-                # Generate random data for demo
-                dates = [datetime.now() - timedelta(days=i) for i in range(30, 0, -1)]
-                date_labels = [date.strftime("%m/%d") for date in dates]
-                
-                # Interaction counts (simulated)
-                interactions = [random.randint(0, 3) for _ in range(30)]
-                
-                # Create figure
-                fig, ax = plt.subplots(figsize=(10, 4))
-                ax.bar(date_labels, interactions, color='purple', alpha=0.7)
-                ax.set_title('Social Interactions')
-                ax.set_ylabel('Count')
-                ax.set_xticks(date_labels[::5])  # Show every 5th date
-                ax.grid(True, linestyle='--', alpha=0.7, axis='y')
-                st.pyplot(fig)
-                
-                # Suggested activities
-                st.subheader("Suggested Activities")
-                suggestions = social_data.get("suggestions", [])
-                
-                if suggestions:
-                    for suggestion in suggestions:
-                        suggestion_type = suggestion.get("type", "unknown")
-                        title = suggestion.get("title", "No title")
-                        description = suggestion.get("description", "No description")
-                        priority = suggestion.get("priority", "low")
-                        
-                        priority_color = "green" if priority == "low" else "orange" if priority == "medium" else "red"
-                        
-                        st.markdown(
-                            f"""
-                            <div style="padding: 10px; margin-bottom: 10px; border-radius: 5px; border-left: 5px solid {priority_color}; background-color: #f0f2f6;">
-                                <div style="font-weight: bold;">{title}</div>
-                                <div style="font-size: 0.9em;">{description}</div>
-                                <div style="font-size: 0.8em; color: {priority_color};">Priority: {priority.title()}</div>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-                else:
-                    st.info("No activity suggestions")
-                
-                # Social alerts
-                st.subheader("Social Alerts")
-                social_alerts = social_data.get("alerts", [])
-                
-                if social_alerts:
-                    for alert in social_alerts:
-                        level = alert.get("level", "info")
-                        message = alert.get("message", "No message")
-                        alert_type = alert.get("type", "unknown")
-                        
-                        alert_color = "blue" if level == "info" else "orange" if level == "warning" else "red"
-                        
-                        st.markdown(
-                            f"""
-                            <div style="padding: 10px; margin-bottom: 10px; border-radius: 5px; background-color: rgba({', '.join(['255, 0, 0, 0.1'] if level == 'urgent' else ['255, 165, 0, 0.1'] if level == 'warning' else ['0, 0, 255, 0.1'])});">
-                                <div style="font-weight: bold; color: {alert_color};">{level.upper()}: {message}</div>
-                                <div style="font-size: 0.8em;">Type: {alert_type}</div>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-                        
-                        if st.button(f"Resolve {alert_type.title()} Alert", key=f"resolve_social_{alert_type}"):
-                            resolve_alert(alert)
-                else:
-                    st.info("No active social alerts")
-            else:
-                st.warning("No social data available")
-        
         # Alerts tab
-        with tabs[5]:
+        with tabs[4]:
             st.subheader("All Active Alerts")
             
             alerts = user_details.get("alerts", [])
