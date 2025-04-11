@@ -12,16 +12,15 @@ database:
   type: sqlite
   path: ./data/carecompanion.db
 
-# LLM settings
+# LLM settings - updated to use Ollama models
 llm:
   provider: ollama
   models:
-    health_monitor: TinyLlama-1.1B
-    safety_guardian: Gemma-2B
-    daily_assistant: Phi-2
-    social_engagement: DistilBERT
-    coordination: Gemma-2B
-    emergency: TinyLlama-1.1B
+    health_monitor: mistral
+    safety_guardian: mistral
+    daily_assistant: mistral
+    emergency: mistral
+    coordination: mistral
 
 # Agent settings
 agents:
@@ -80,10 +79,8 @@ agents:
         priority: medium
         max_delay: 240  # minutes
   
-  social_engagement:
-    update_interval: 3600  # seconds
-    isolation_threshold: 72  # hours
-    
+  # social_engagement section removed
+  
   coordination:
     update_interval: 30  # seconds
     
@@ -102,5 +99,5 @@ ui:
       - health_trends
       - safety_score
       - reminder_adherence
-      - social_engagement
+      # social_engagement chart removed
     default_timespan: 7  # days
