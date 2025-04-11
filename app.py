@@ -21,7 +21,7 @@ from models.analytics import analyzer
 from agents.health_monitor import HealthMonitorAgent
 from agents.safety_guardian import SafetyGuardianAgent
 from agents.daily_assistant import DailyAssistantAgent
-from agents.social_engagement import SocialEngagementAgent
+# Removed: from agents.social_engagement import SocialEngagementAgent
 from agents.emergency_response import EmergencyResponseAgent
 from agents.coordination import CoordinationAgent
 
@@ -52,7 +52,7 @@ async def initialize_system(config: Config) -> Dict[str, Any]:
     health_agent = HealthMonitorAgent(config)
     safety_agent = SafetyGuardianAgent(config)
     daily_agent = DailyAssistantAgent(config)
-    social_agent = SocialEngagementAgent(config)
+    # Removed: social_agent = SocialEngagementAgent(config)
     emergency_agent = EmergencyResponseAgent(config)
     coordination_agent = CoordinationAgent(config)
     
@@ -61,7 +61,7 @@ async def initialize_system(config: Config) -> Dict[str, Any]:
         health_agent,
         safety_agent,
         daily_agent,
-        social_agent,
+        # Removed: social_agent,
         emergency_agent
     )
     
@@ -71,7 +71,7 @@ async def initialize_system(config: Config) -> Dict[str, Any]:
         health_agent,
         safety_agent,
         daily_agent,
-        social_agent,
+        # Removed: social_agent,
         emergency_agent,
         coordination_agent
     ]
@@ -86,7 +86,7 @@ async def initialize_system(config: Config) -> Dict[str, Any]:
         "health_agent": health_agent,
         "safety_agent": safety_agent,
         "daily_agent": daily_agent,
-        "social_agent": social_agent,
+        # Removed: "social_agent": social_agent,
         "emergency_agent": emergency_agent,
         "coordination_agent": coordination_agent
     }
@@ -126,7 +126,7 @@ async def data_simulation(coordination_agent: CoordinationAgent) -> None:
             # Select random user
             user_id = random.choice(user_ids)
             
-            # Select random data type
+            # Select random data type (removed social)
             data_type = random.choice(["health", "safety", "reminder"])
             
             if data_type == "health":
